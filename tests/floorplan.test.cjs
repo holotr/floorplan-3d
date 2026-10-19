@@ -89,3 +89,14 @@ test('walking collides with actual short and wide door leaves',()=>{
   ctx.doors[0].len=.6;
   assert.equal(ctx.block(.85,0,.05),false,'utility door must not create a phantom 900 mm barrier');
 });
+test('whole-home framing fits both portrait and landscape viewports',()=>{
+  const d=data(),start=html.indexOf('function wholeDistance(');
+  assert.ok(start>=0,'whole-home camera must fit the new footprint');
+  const ctx={PLAN:d.PLAN,H:2.8,FOV:45,M:v=>v/1000,SW:()=>648,SH:()=>758};
+  vm.runInNewContext(html.slice(start,html.indexOf('const isoWhole',start))+';globalThis.distance=wholeDistance;',ctx);
+  const radius=Math.hypot(d.PLAN.width/2000,d.PLAN.depth/2000,2.8);
+  for(const aspect of [.55,.855,1.33,2]){
+    const halfV=45*Math.PI/360,halfH=Math.atan(Math.tan(halfV)*aspect);
+    assert.ok(ctx.distance(aspect)*Math.sin(Math.min(halfV,halfH))>radius,'house bounds must remain inside the view frustum');
+  }
+});

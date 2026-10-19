@@ -2423,8 +2423,14 @@ function isoFrom(P){
   const d = THREE.MathUtils.clamp(P.p.y, 5, 30), dir = new THREE.Vector3(.3, .82, .49).normalize();
   return pose(P.t.clone(), P.t.clone().addScaledVector(dir, d));
 }
-const isoWhole = () => pose(new THREE.Vector3(0, 0, 0), new THREE.Vector3(5.5, 15.5, 10));
-const topWhole = () => pose(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 19, 1e-4));
+// 以含墙高的包围球适配较窄视角，竖屏下全屋视角也不会截断房间。
+function wholeDistance(aspect = SW()/SH()){
+  const halfAngle = Math.atan(Math.tan(FOV*Math.PI/360)*Math.min(1, aspect));
+  const radius = Math.hypot(M(PLAN.width)/2, M(PLAN.depth)/2, H);
+  return radius / Math.sin(halfAngle) * 1.05;
+}
+const isoWhole = () => pose(new THREE.Vector3(0, 0, 0), new THREE.Vector3(5.5, 15.5, 10).normalize().multiplyScalar(wholeDistance()));
+const topWhole = () => pose(new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, wholeDistance(), 1e-4));
 const curPose = () => pose(orbit.target.clone(), camera.position.clone());
 // 以目标点为中心做球坐标插值：镜头沿弧线倾斜环绕，而不是直线穿越
 function camTween(A, B, e){
