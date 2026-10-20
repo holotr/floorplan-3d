@@ -2,7 +2,7 @@
 
 [中文](README.md) | English
 
-This branch keeps the measured-plan orientation and fits measured interior room dimensions into the official **10700 × 11550 mm exterior envelope**. Kitchen and bathroom interiors are unmeasured and shown as estimates. The living/dining boundary still differs from the measured-plan area (38.24 vs 35.49 m²); see the [dimension mapping](docs/dimension-mapping.md).
+This branch keeps the measured-plan orientation and prioritizes measured interiors and connected foyer/step offsets. The current model is **10700 × 11243 mm**; the official **10700 × 11550 mm** envelope remains a separate reference with an unresolved 307 mm depth difference, not extra room space. Kitchen/bathroom interiors are estimated. Living/dining computes to about35.18 m² versus35.49 m² in the measured plan. See the [dimension mapping](docs/dimension-mapping.md).
 
 A pure front-end tool for interior design on a floor plan: place furniture, remove or modify walls, and take measurements on a 2D plan, then switch to a Three.js 3D scene with one click — view it from above or walk through it in first person. The whole app is a single `index.html`: no build step, just open it.
 
