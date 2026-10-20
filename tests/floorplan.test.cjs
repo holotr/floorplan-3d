@@ -100,3 +100,28 @@ test('whole-home framing fits both portrait and landscape viewports',()=>{
     assert.ok(ctx.distance(aspect)*Math.sin(Math.min(halfV,halfH))>radius,'house bounds must remain inside the view frustum');
   }
 });
+test('bathroom return wall encloses the vanity and sideboard stays outside the bathroom',()=>{
+  const d=data(),ctx={typeColor:()=> '#fff'};
+  vm.runInNewContext(html.slice(html.indexOf('let _n = 1;'),html.indexOf('function defaultState()'))+';globalThis.items=defaultFurniture();',ctx);
+  const cabinet=ctx.items.find(f=>f.id==='bath-sideboard');
+  assert.ok(cabinet,'red-marked dining sideboard must be present');
+  assert.equal(cabinet.type,'cabinet');assert.equal(cabinet.name,'餐边柜');
+  assert.ok(cabinet.cx>3162&&cabinet.cx<3665&&cabinet.cy>4736&&cabinet.cy<6172);
+  assert.ok(d.WALLS.some(w=>w[0]===3515&&w[2]===3665&&w[1]<=3974&&w[3]===4586),'black-marked vanity east wall');
+  assert.ok(d.WALLS.some(w=>w[0]<=3162&&w[1]===4586&&w[2]===3665&&w[3]===4736),'black-marked return wall');
+});
+test('existing layouts receive the missing sideboard once and retain user edits',()=>{
+  const d=data(),ctx={PLAN:d.PLAN,ROOMS:d.ROOMS,typeColor:()=> '#fff',localStorage:{getItem:()=>null}};
+  vm.runInNewContext(html.slice(html.indexOf('let _n = 1;'),html.indexOf('const PX_MM'))+';globalThis.fix=fixState;globalThis.fresh=defaultState;',ctx);
+  const legacy={planId:d.PLAN.id,furniture:[{id:'my-chair',type:'chair',name:'我的餐椅',cx:5200,cy:5200,w:450,d:480,rot:30}],rooms:{living:{name:'我家客厅',mat:'wood'}},demolished:['w20'],measures:[{a:{x:0,y:0},b:{x:1000,y:0}}]};
+  const before=JSON.parse(JSON.stringify(legacy));
+  const migrated=ctx.fix(legacy);
+  assert.equal(migrated.layoutRevision,2);
+  assert.equal(migrated.furniture.filter(f=>f.id==='bath-sideboard').length,1);
+  assert.deepEqual(migrated.furniture[0],before.furniture[0]);
+  assert.deepEqual(migrated.rooms.living,before.rooms.living);
+  assert.deepEqual(migrated.demolished,before.demolished);assert.deepEqual(migrated.measures,before.measures);
+  assert.equal(ctx.fix(migrated).furniture.filter(f=>f.id==='bath-sideboard').length,1);
+  migrated.furniture=migrated.furniture.filter(f=>f.id!=='bath-sideboard');
+  assert.equal(ctx.fix(migrated).furniture.length,1,'do not re-add a sideboard deleted after the correction');
+});

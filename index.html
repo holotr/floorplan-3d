@@ -391,7 +391,7 @@ function applyStaticLang(){
  *  高：150+2874+150+1412+150+1436+150+4771+150 = 11243
  *  推定墙厚、门窗位置、面积差异详见 docs/dimension-mapping.md。
  * ============================================================ */
-const PLAN = {id:'measured-10694x11243-v1', width:10694, depth:11243,
+const PLAN = {id:'measured-10694x11243-v1', revision:2, width:10694, depth:11243,
   walk:{position:[8700,4124], target:[6000,4124]}};
 // 墙体：[x0,y0,x1,y1,类型]  b=承重(黑) e=外墙 n=可拆非承重 low=矮墙
 const WALLS = [
@@ -411,7 +411,7 @@ const WALLS = [
   [3661,150,3811,3024,'n'],[5856,150,6006,3024,'n'],[5606,150,5856,420,'e'],
   [641,3024,2661,3174,'n'],[3561,3024,3961,3174,'n'],[5706,3024,6106,3174,'n'],[7006,3024,8833,3174,'n'],
   // 左侧双卫；下方卫生间从主卧进入
-  [2133,3974,2283,4586,'n'],[150,4586,3162,4736,'n'],[3012,4736,3162,6172,'n'],
+  [2133,3974,2283,4586,'n'],[150,4586,3665,4736,'n'],[3012,4736,3162,6172,'n'],
   [150,6172,2062,6322,'n'],[2862,6172,3665,6322,'n'],
   // 主卧东墙，门洞在靠北处
   [3515,7222,3665,11093,'n'],
@@ -419,6 +419,8 @@ const WALLS = [
   [7430,4967,8278,5067,'n'],[9028,4967,9178,5067,'n'],
   [7430,5067,7580,5267,'n'],[7430,5867,7580,6175,'n'],[7430,7075,7580,11093,'n'],
   [8154,5067,8254,6025,'n'],[7580,6025,9178,6175,'n'],
+  // 用户黑线校正：洗手台右侧回折墙。追加以保留既有拆墙记录的索引。
+  [3515,3974,3665,4586,'n'],
 ];
 // 窗：[x0,y0,x1,y1,窗台高,窗顶高]，后两项同样使用 mm。宽度/位置为按图推定。
 const WINS = [
@@ -450,7 +452,7 @@ const ROOMS = [
   {id:'gbath',name:'客卫浴',poly:R(150,3174,2133,4586),mat:'antislip',at:[1100,4080]},
   {id:'mbath',name:'主卫浴',poly:R(150,4736,3012,6172),mat:'antislip',at:[1650,5550]},
   {id:'master',name:'主卧室',poly:R(150,6322,3515,11093),mat:'wood',at:[2000,9300]},
-  {id:'living',name:'客餐厅',poly:[[2283,3174],[9178,3174],[9178,4967],[7430,4967],[7430,11093],[3665,11093],[3665,6172],[3162,6172],[3162,4586],[2283,4586]],mat:'tile800',at:[5450,7600]},
+  {id:'living',name:'客餐厅',poly:[[2283,3174],[9178,3174],[9178,4967],[7430,4967],[7430,11093],[3665,11093],[3665,6172],[3162,6172],[3162,4736],[3665,4736],[3665,3974],[3515,3974],[3515,4586],[2283,4586]],mat:'tile800',at:[5450,7600]},
   {id:'utility',name:'家政间',poly:R(7580,5067,8154,6025),mat:'tile600',at:[7867,5550]},
   {id:'storage',name:'储物间',poly:R(8254,5067,9178,6025),mat:'wood',at:[8716,5550]},
   {id:'secondary',name:'次卧',poly:[[7580,6175],[9178,6175],[9178,7210],[10544,7210],[10544,11093],[7580,11093]],mat:'wood',at:[9080,9450]},
@@ -515,6 +517,11 @@ let _n = 1;
 const uid = () => 'f' + Date.now().toString(36) + (_n++);
 const F = (type,name,cx,cy,w,d,rot=0,color) => ({id:uid(),type,name,cx,cy,w,d,rot,color:color||typeColor(type)});
 
+function defaultSideboard(){
+  // 用户红框校正：沿主卫东墙外侧的餐边柜（暂按长 1400、深 500，留少量安装间隙）。
+  return {...F('cabinet','餐边柜',3412,5454,1400,500,90), id:'bath-sideboard'};
+}
+
 function defaultFurniture(){ return [
   // 家具仅为参考摆放，全部位于新户型内，可继续拖动/旋转/增删。
   F('bed','双人床 1.5m',1850,1300,1500,2000,270),
@@ -527,6 +534,7 @@ function defaultFurniture(){ return [
   F('toilet','马桶',650,4050,400,700,270), F('vanity','浴室柜',2633,4300,700,480),
   F('shower','淋浴房',650,5236,900,900), F('toilet','马桶',1600,5136,400,700),
   F('vanity','浴室柜',2622,5150,700,500,90),
+  defaultSideboard(),
   F('bed','双人床 1.8m',1430,8400,1800,2000,270),
   F('nightstand','床头柜',500,7200,450,400), F('nightstand','床头柜',500,9700,450,400),
   F('wardrobe','衣柜',3215,9500,1800,600,90), F('dresser','梳妆台',2300,10750,1000,450),
@@ -544,7 +552,7 @@ function defaultFurniture(){ return [
 
 function defaultState(){
   const rooms = {}; ROOMS.forEach(r => rooms[r.id] = {name:r.name, mat:r.mat});
-  return {planId:PLAN.id, furniture:defaultFurniture(), rooms, demolished:[], measures:[]};
+  return {planId:PLAN.id, layoutRevision:PLAN.revision, furniture:defaultFurniture(), rooms, demolished:[], measures:[]};
 }
 
 const STORE = 'huxing-' + PLAN.id;
@@ -554,6 +562,11 @@ function load(){
 }
 function fixState(s){
   if (s.planId !== PLAN.id) throw new Error('户型不匹配 / Incompatible floor plan');
+  // 同一户型的小修正保留用户布置；补柜只做一次，之后用户可自由移动/删除。
+  if ((s.layoutRevision ?? 1) < 2){
+    if (!s.furniture.some(f => f.id === 'bath-sideboard')) s.furniture.push(defaultSideboard());
+    s.layoutRevision = 2;
+  }
   const d = defaultState();
   s.rooms = Object.assign(d.rooms, s.rooms || {});
   s.demolished = s.demolished || []; s.measures = s.measures || [];
