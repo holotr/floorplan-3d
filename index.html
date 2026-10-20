@@ -228,7 +228,7 @@ main.drawer-panel #fab{opacity:0;visibility:hidden}
       <button class="btn chip" id="tgLib" data-en="◧ Library">◧ 家具库</button>
       <button class="btn chip" id="tgPanel" data-en="Properties ◨">属性 ◨</button>
     </div>
-    <div class="brand"><b data-en="Measured Plan · 3 Bedrooms + Study · 2 Baths">实测户型 · 三卧一书房 · 双卫</b><span id="subtitle">实测户型 · 尺寸单位 mm</span></div>
+    <div class="brand"><b data-en="Plan Envelope · Measured Interiors">图纸外框 · 实测净尺寸</b><span id="subtitle">厨卫未实测 · 尺寸单位 mm</span></div>
     <div class="grp seg" id="viewSeg" title="切换 2D / 3D (T)" data-en-title="Switch 2D / 3D (T)">
       <span class="pill"></span>
       <button class="btn" data-view="2d" data-en="2D Plan">2D 平面</button>
@@ -385,91 +385,81 @@ function applyStaticLang(){
 }
 
 /* ============================================================
- *  实测户型（mm，原点 = 整屋外包框左上角，x 向右、y 向下）
- *  朝向、房名、净尺寸取图二；图一左右镜像后仅辅助墙体关系。
- *  宽：150+3365+150+3765+150+2964+150 = 10694
- *  高：150+2874+150+1412+150+1436+150+4771+150 = 11243
- *  推定墙厚、门窗位置、面积差异详见 docs/dimension-mapping.md。
+ *  图纸外框 + 实测净尺寸（mm，保留实测图的左右朝向）
+ *  官方总外框 10700 × 11550；非厨卫房间以内侧实测尺寸定位。
+ *  厨房/双卫未实测：仅用官方关系与外框跨度，面积及墙厚均为暂估。
+ *  151/75/79/317/50 等闭合余量不是现场结构墙厚，详见尺寸映射。
  * ============================================================ */
-const PLAN = {id:'measured-10694x11243-v1', revision:2, width:10694, depth:11243,
-  walk:{position:[8700,4124], target:[6000,4124]}};
-// 墙体：[x0,y0,x1,y1,类型]  b=承重(黑) e=外墙 n=可拆非承重 low=矮墙
+const PLAN = {id:'official-envelope-net-v1', revision:1, width:10700, depth:11550,
+  walk:{position:[8700,4050], target:[6000,4050]}};
+// 墙体：[x0,y0,x1,y1,类型]。本版是净尺寸校准模型，墙厚/构造类型待复测。
 const WALLS = [
-  // 上方长辈房 / 厨房 / 书房的外墙与窗间墙
-  [641,0,1450,150,'e'],[3150,0,4180,150,'e'],[5100,0,6420,150,'e'],[8170,0,8833,150,'e'],
-  [641,150,791,3024,'e'],[8683,150,8833,3024,'e'],
-  // 两处退台及左外墙
-  [0,3024,641,3174,'e'],[8833,3024,9328,3174,'e'],
-  [0,3174,150,3500,'e'],[0,4200,150,5100,'e'],[0,5800,150,11093,'e'],
-  // 右侧入户与次卧凸出段（1216 是入户外墙至次卧右内皮）
-  [9178,3174,9328,3574,'e'],[9178,4674,9328,7210,'e'],
-  [9328,7060,10694,7210,'e'],[10544,7210,10694,11093,'e'],
-  // 底部三窗
-  [0,11093,600,11243,'e'],[3000,11093,3900,11243,'e'],
-  [7200,11093,8000,11243,'e'],[10200,11093,10694,11243,'e'],
-  // 上方三房分隔、南侧门洞及厨房烟道
-  [3661,150,3811,3024,'n'],[5856,150,6006,3024,'n'],[5606,150,5856,420,'e'],
-  [641,3024,2661,3174,'n'],[3561,3024,3961,3174,'n'],[5706,3024,6106,3174,'n'],[7006,3024,8833,3174,'n'],
-  // 左侧双卫；下方卫生间从主卧进入
-  [2133,3974,2283,4586,'n'],[150,4586,3665,4736,'n'],[3012,4736,3162,6172,'n'],
-  [150,6172,2062,6322,'n'],[2862,6172,3665,6322,'n'],
-  // 主卧东墙，门洞在靠北处
-  [3515,7222,3665,11093,'n'],
-  // 右侧家政 / 储物及次卧入口
-  [7430,4967,8278,5067,'n'],[9028,4967,9178,5067,'n'],
-  [7430,5067,7580,5267,'n'],[7430,5867,7580,6175,'n'],[7430,7075,7580,11093,'n'],
-  [8154,5067,8254,6025,'n'],[7580,6025,9178,6175,'n'],
-  // 用户黑线校正：洗手台右侧回折墙。追加以保留既有拆墙记录的索引。
-  [3515,3974,3665,4586,'n'],
+  [800,0,1300,151,'e'],[3000,0,4400,151,'e'],[5300,0,6900,151,'e'],[8650,0,9300,151,'e'],
+  [800,151,953,3025,'e'],[9100,151,9300,3025,'e'],
+  // 官方图中的小卫生间与上部卧室齐边，左侧为室外凹口。
+  [800,3025,953,3100,'e'],[9181,3100,9300,3175,'e'],
+  [800,3100,953,3450,'e'],[800,4150,953,4775,'e'],[0,6050,153,11500,'e'],
+  [9181,3175,9300,3500,'e'],[9181,4600,9300,7617,'e'],
+  // 次卧上侧317为官方退台与实测净深之间的构造预留，不作为已测墙厚。
+  [9300,7300,10700,7617,'e'],[10547,7617,10700,11500,'e'],
+  // 下沿含官方500窗台区域，50为显示窗框线，不是结构墙厚。
+  [0,11500,600,11550,'e'],[3000,11500,3900,11550,'e'],
+  [7200,11500,8000,11550,'e'],[10200,11500,10700,11550,'e'],
+  [3823,151,3973,3025,'n'],[6273,151,6423,3025,'n'],[5673,151,6273,551,'e'],
+  [800,3025,2923,3100,'n'],[3823,3025,4073,3100,'n'],[6173,3025,6523,3100,'n'],[7423,3025,9300,3100,'n'],
+  [2450,3900,2600,4775,'n'],[953,4775,3668,4925,'n'],[2950,4925,3100,6650,'n'],
+  [153,6650,2100,6729,'n'],[2900,6650,3668,6729,'n'],
+  [3518,7629,3668,11500,'n'],
+  [7433,5374,8325,5474,'n'],[9075,5374,9181,5474,'n'],
+  [7433,5474,7583,5674,'n'],[7433,6274,7583,6582,'n'],[7433,7482,7583,11500,'n'],
+  [8157,5474,8257,6432,'n'],[7583,6432,9181,6582,'n'],
+  [3518,3900,3668,4775,'n'],
+  [0,4775,953,4925,'e'],[0,4925,153,5350,'e'],
 ];
-// 窗：[x0,y0,x1,y1,窗台高,窗顶高]，后两项同样使用 mm。宽度/位置为按图推定。
 const WINS = [
-  [1450,0,3150,150,900,2400],[4180,0,5100,150,900,2400],[6420,0,8170,150,900,2400],
-  [0,3500,150,4200,1400,2400],[0,5100,150,5800,1400,2400],
-  [600,11093,3000,11243,450,2400],[3900,11093,7200,11243,450,2400],[8000,11093,10200,11243,450,2400],
+  [1300,0,3000,151,900,2400],[4400,0,5300,151,900,2400],[6900,0,8650,151,900,2400],
+  [800,3450,953,4150,1400,2400],[0,5350,153,6050,1400,2400],
+  [600,11500,3000,11550,450,2400],[3900,11500,7200,11550,450,2400],[8000,11500,10200,11550,450,2400],
 ];
-// 平开门：洞口、铰点、关闭方向、开启方向、门宽
 const DOORS = [
-  {name:'长辈房门',rect:[2661,3024,3561,3174],h:[3561,3024],c:[-1,0],o:[0,-1],len:900},
-  {name:'书房门',rect:[6106,3024,7006,3174],h:[6106,3024],c:[1,0],o:[0,-1],len:900},
-  {name:'客卫门',rect:[2133,3174,2283,3974],h:[2133,3174],c:[0,1],o:[-1,0],len:800},
-  {name:'主卫门',rect:[2062,6172,2862,6322],h:[2062,6322],c:[1,0],o:[0,1],len:800},
-  {name:'主卧门',rect:[3515,6322,3665,7222],h:[3515,6322],c:[0,1],o:[-1,0],len:900},
-  {name:'次卧门',rect:[7430,6175,7580,7075],h:[7580,6175],c:[0,1],o:[1,0],len:900},
-  {name:'家政间门',rect:[7430,5267,7580,5867],h:[7430,5267],c:[0,1],o:[-1,0],len:600},
-  {name:'储物间门',rect:[8278,4967,9028,5067],h:[9028,5067],c:[-1,0],o:[0,1],len:750},
-  {name:'入户门',rect:[9178,3574,9328,4674],h:[9178,4674],c:[0,-1],o:[-1,0],len:1100,entry:true},
+  {name:'长辈房门',rect:[2923,3025,3823,3100],h:[3823,3025],c:[-1,0],o:[0,-1],len:900},
+  {name:'书房门',rect:[6523,3025,7423,3100],h:[6523,3025],c:[1,0],o:[0,-1],len:900},
+  {name:'客卫门',rect:[2450,3100,2600,3900],h:[2450,3100],c:[0,1],o:[-1,0],len:800},
+  {name:'主卫门',rect:[2100,6650,2900,6729],h:[2100,6729],c:[1,0],o:[0,1],len:800},
+  {name:'主卧门',rect:[3518,6729,3668,7629],h:[3518,6729],c:[0,1],o:[-1,0],len:900},
+  {name:'次卧门',rect:[7433,6582,7583,7482],h:[7583,6582],c:[0,1],o:[1,0],len:900},
+  {name:'家政间门',rect:[7433,5674,7583,6274],h:[7433,5674],c:[0,1],o:[-1,0],len:600},
+  {name:'储物间门',rect:[8325,5374,9075,5474],h:[9075,5474],c:[-1,0],o:[0,1],len:750},
+  {name:'入户门',rect:[9181,3500,9300,4600],h:[9181,4600],c:[0,-1],o:[-1,0],len:1100,entry:true},
 ];
-// 推拉门
-const SLIDES = [
-  {rect:[3961,3024,5706,3174],v:false},
-];
+const SLIDES = [{rect:[4073,3025,6173,3100],v:false}];
 const R = (x0,y0,x1,y1) => [[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
 const ROOMS = [
-  {id:'elder',name:'长辈房',poly:R(791,150,3661,3024),mat:'wood',at:[2250,2350]},
-  {id:'kitchen',name:'厨房',poly:[[3811,150],[5606,150],[5606,420],[5856,420],[5856,3024],[3811,3024]],mat:'marble',at:[4850,2100]},
-  {id:'study',name:'书房',poly:R(6006,150,8683,3024),mat:'wood',at:[7500,2000]},
-  {id:'gbath',name:'客卫浴',poly:R(150,3174,2133,4586),mat:'antislip',at:[1100,4080]},
-  {id:'mbath',name:'主卫浴',poly:R(150,4736,3012,6172),mat:'antislip',at:[1650,5550]},
-  {id:'master',name:'主卧室',poly:R(150,6322,3515,11093),mat:'wood',at:[2000,9300]},
-  {id:'living',name:'客餐厅',poly:[[2283,3174],[9178,3174],[9178,4967],[7430,4967],[7430,11093],[3665,11093],[3665,6172],[3162,6172],[3162,4736],[3665,4736],[3665,3974],[3515,3974],[3515,4586],[2283,4586]],mat:'tile800',at:[5450,7600]},
-  {id:'utility',name:'家政间',poly:R(7580,5067,8154,6025),mat:'tile600',at:[7867,5550]},
-  {id:'storage',name:'储物间',poly:R(8254,5067,9178,6025),mat:'wood',at:[8716,5550]},
-  {id:'secondary',name:'次卧',poly:[[7580,6175],[9178,6175],[9178,7210],[10544,7210],[10544,11093],[7580,11093]],mat:'wood',at:[9080,9450]},
+  {id:'elder',name:'长辈房',poly:R(953,151,3823,3025),mat:'wood',at:[2400,2350],source:'measured'},
+  {id:'kitchen',name:'厨房',poly:[[3973,151],[5673,151],[5673,551],[6273,551],[6273,3025],[3973,3025]],mat:'marble',at:[5200,2200],source:'official',estimated:true,officialSpan:[2600,3100]},
+  {id:'study',name:'书房',poly:R(6423,151,9100,3025),mat:'wood',at:[7900,2100],source:'measured'},
+  {id:'gbath',name:'客卫浴',poly:R(953,3100,2450,4775),mat:'antislip',at:[1700,4300],source:'official',estimated:true,officialSpan:[1750]},
+  {id:'mbath',name:'主卫浴',poly:R(153,4925,2950,6650),mat:'antislip',at:[1650,5800],source:'official',estimated:true,officialSpan:[1800]},
+  {id:'master',name:'主卧室',poly:R(153,6729,3518,11500),mat:'wood',at:[2000,9800],source:'measured'},
+  {id:'living',name:'客餐厅',poly:[[2600,3100],[9181,3100],[9181,5374],[7433,5374],[7433,11500],[3668,11500],[3668,6650],[3100,6650],[3100,4925],[3668,4925],[3668,3900],[3518,3900],[3518,4775],[2600,4775]],mat:'tile800',at:[5500,7900],source:'measured',estimated:true,measuredArea:35.49},
+  {id:'utility',name:'家政间',poly:R(7583,5474,8157,6432),mat:'tile600',at:[7870,5950],source:'measured',extentEstimated:true},
+  {id:'storage',name:'储物间',poly:R(8257,5474,9181,6432),mat:'wood',at:[8720,5950],source:'measured',extentEstimated:true},
+  {id:'secondary',name:'次卧',poly:[[7583,6582],[9181,6582],[9181,7617],[10547,7617],[10547,11500],[7583,11500]],mat:'wood',at:[9100,9950],source:'measured',extentEstimated:true},
 ];
-// 直接标注实际两端坐标；净尺寸留出墙厚，不用一条连续尺寸链伪造闭合。
+// 图=官方外框/定位跨度；无前缀=实测净尺寸；≈=根据未测构造推定。
 const DIMENSIONS = [
-  {h:true,at:-1150,start:641,end:9328},{h:true,at:-650,start:791,end:3661},
-  {h:true,at:-650,start:3811,end:5856},{h:true,at:-650,start:6006,end:8683},
-  {h:true,at:11800,start:150,end:3515},{h:true,at:11800,start:3665,end:7430},{h:true,at:11800,start:7580,end:10544},
-  {h:true,at:12350,start:0,end:10694},
-  {h:false,at:-1250,start:0,end:11243},{h:false,at:-650,start:150,end:3024},
-  {h:false,at:-650,start:3174,end:4586},{h:false,at:-650,start:4736,end:6172},{h:false,at:-650,start:6322,end:11093},
-  {h:true,at:2700,start:150,end:641},
-  {h:false,at:9900,start:150,end:3024},{h:false,at:9900,start:3174,end:4967},
-  {h:false,at:9900,start:5067,end:6025},{h:false,at:11300,start:6175,end:7060},
-  {h:true,at:6660,start:9328,end:10544},
-  {h:false,at:11300,start:7210,end:11093},{h:false,at:11800,start:0,end:11243},
+  {h:true,at:-1650,start:3823,end:6423,source:'official'},
+  {h:true,at:-1150,start:0,end:9300,source:'official'},
+  {h:true,at:-650,start:953,end:3823},{h:true,at:-650,start:3973,end:6273,source:'estimated'},{h:true,at:-650,start:6423,end:9100},
+  {h:true,at:12100,start:153,end:3518},{h:true,at:12100,start:3668,end:7433},{h:true,at:12100,start:7583,end:10547},
+  {h:true,at:12650,start:0,end:10700,source:'official'},
+  {h:false,at:-1250,start:0,end:11550,source:'official'},{h:false,at:-650,start:151,end:3025},
+  {h:false,at:-650,start:3100,end:4850,source:'official'},{h:false,at:-650,start:4850,end:6650,source:'official'},
+  {h:false,at:-650,start:6729,end:11500},
+  {h:false,at:9900,start:0,end:3100,source:'official'},
+  {h:false,at:9900,start:5474,end:6432},
+  {h:false,at:11300,start:7617,end:11500},{h:false,at:11800,start:0,end:11550,source:'official'},
+  {h:false,at:11300,start:11050,end:11550,source:'official'},
 ];
 const MATS = {
   wood:    {name:'橡木地板', price:320, sw:'#d8b88a'},
@@ -519,35 +509,30 @@ const F = (type,name,cx,cy,w,d,rot=0,color) => ({id:uid(),type,name,cx,cy,w,d,ro
 
 function defaultSideboard(){
   // 用户红框校正：沿主卫东墙外侧的餐边柜（暂按长 1400、深 500，留少量安装间隙）。
-  return {...F('cabinet','餐边柜',3412,5454,1400,500,90), id:'bath-sideboard'};
+  return {...F('cabinet','餐边柜',3350,5787.5,1400,500,90), id:'bath-sideboard'};
 }
 
 function defaultFurniture(){ return [
-  // 家具仅为参考摆放，全部位于新户型内，可继续拖动/旋转/增删。
-  F('bed','双人床 1.5m',1850,1300,1500,2000,270),
-  F('nightstand','床头柜',1050,2350,450,400), F('wardrobe','衣柜',3361,1250,1600,600,90),
-  F('bed','单人床',6606,1400,1000,2000), F('desk','书桌',8383,1600,1200,600,90),
-  F('officechair','办公椅',7650,1600,550,550,90), F('bookshelf','书架',8100,2800,1100,300),
-  F('counter','橱柜台面',4111,1200,2100,600,270), F('counter','橱柜台面',5080,750,1350,600),
-  F('stove','燃气灶',4111,1500,750,450,270), F('ksink','水槽',4950,750,700,450),
-  F('fridge','冰箱',5506,2500,700,700),
-  F('toilet','马桶',650,4050,400,700,270), F('vanity','浴室柜',2633,4300,700,480),
-  F('shower','淋浴房',650,5236,900,900), F('toilet','马桶',1600,5136,400,700),
-  F('vanity','浴室柜',2622,5150,700,500,90),
+  F('bed','双人床 1.5m',2000,1300,1500,2000,270), F('nightstand','床头柜',1200,2350,450,400),
+  F('wardrobe','衣柜',3523,1250,1600,600,90),
+  F('bed','单人床',7023,1400,1000,2000), F('desk','书桌',8800,1600,1200,600,90),
+  F('officechair','办公椅',8050,1600,550,550,90), F('bookshelf','书架',8500,2800,1000,300),
+  F('counter','橱柜台面',4273,1201,2100,600,270), F('counter','橱柜台面',5323,851,1500,600),
+  F('stove','燃气灶',4273,1600,750,450,270), F('ksink','水槽',5273,851,700,450), F('fridge','冰箱',5923,2500,700,700),
+  F('toilet','马桶',1450,4200,400,700,270), F('vanity','浴室柜',3000,4430,700,480),
+  F('shower','淋浴房',653,5425,900,900), F('toilet','马桶',1600,5400,400,700), F('vanity','浴室柜',2650,5400,700,500,90),
   defaultSideboard(),
-  F('bed','双人床 1.8m',1430,8400,1800,2000,270),
-  F('nightstand','床头柜',500,7200,450,400), F('nightstand','床头柜',500,9700,450,400),
-  F('wardrobe','衣柜',3215,9500,1800,600,90), F('dresser','梳妆台',2300,10750,1000,450),
-  F('table','餐桌',4700,5200,1500,800,90),
-  F('chair','餐椅',4000,4850,450,480,270), F('chair','餐椅',4000,5550,450,480,270),
-  F('chair','餐椅',5400,4850,450,480,90), F('chair','餐椅',5400,5550,450,480,90),
-  F('shoecab','鞋柜',8300,3374,1200,350),
-  F('rug','地毯',5500,9400,2100,2000), F('sofa','三人沙发',6980,9400,2700,900,90),
-  F('coffeetable','茶几',5550,9400,1000,600,90), F('tvstand','电视柜',3865,9500,2000,400,270),
-  F('plant','绿植',7000,10700,450,450),
-  F('cabinet','储物柜',7850,5775,500,400), F('cabinet','储物柜',8720,5775,800,400),
-  F('bed','双人床 1.5m',9544,9250,1500,2000,90), F('wardrobe','衣柜',8450,7600,1600,600),
-  F('nightstand','床头柜',10250,8100,450,400), F('desk','书桌',8200,10750,1000,450),
+  F('bed','双人床 1.8m',1433,9000,1800,2000,270), F('nightstand','床头柜',503,7800,450,400), F('nightstand','床头柜',503,10300,450,400),
+  F('wardrobe','衣柜',3218,10100,1800,600,90), F('dresser','梳妆台',2400,11150,1000,450),
+  F('table','餐桌',4800,5500,1500,800,90),
+  F('chair','餐椅',4100,5150,450,480,270), F('chair','餐椅',4100,5850,450,480,270),
+  F('chair','餐椅',5500,5150,450,480,90), F('chair','餐椅',5500,5850,450,480,90),
+  F('shoecab','鞋柜',8500,3300,1200,350),
+  F('rug','地毯',5600,9800,2100,2000), F('sofa','三人沙发',6983,9800,2700,900,90),
+  F('coffeetable','茶几',5600,9800,1000,600,90), F('tvstand','电视柜',3868,9900,2000,400,270), F('plant','绿植',7000,11100,450,450),
+  F('cabinet','储物柜',7870,6182,500,400), F('cabinet','储物柜',8723,6182,800,400),
+  F('bed','双人床 1.5m',9547,9700,1500,2000,90), F('wardrobe','衣柜',8450,8000,1600,600),
+  F('nightstand','床头柜',10250,8550,450,400), F('desk','书桌',8200,11150,1000,450),
 ];}
 
 function defaultState(){
@@ -562,11 +547,6 @@ function load(){
 }
 function fixState(s){
   if (s.planId !== PLAN.id) throw new Error('户型不匹配 / Incompatible floor plan');
-  // 同一户型的小修正保留用户布置；补柜只做一次，之后用户可自由移动/删除。
-  if ((s.layoutRevision ?? 1) < 2){
-    if (!s.furniture.some(f => f.id === 'bath-sideboard')) s.furniture.push(defaultSideboard());
-    s.layoutRevision = 2;
-  }
   const d = defaultState();
   s.rooms = Object.assign(d.rooms, s.rooms || {});
   s.demolished = s.demolished || []; s.measures = s.measures || [];
@@ -577,7 +557,7 @@ const PX_MM = 25.4 / 96;                       // 1 CSS px = 0.2646 mm
 const COARSE = matchMedia('(pointer:coarse)').matches;   // iPad / 手机等触屏为主的设备
 const TAP = COARSE ? 9 : 4;                    // 手指按下后移动超过该像素才算拖动
 const narrow = () => matchMedia('(max-width:1100px)').matches;
-const BOUNDS = {x:-1750, y:-1550, w:14500, h:14500};
+const BOUNDS = {x:-1750, y:-2050, w:14500, h:15100};
 const $ = s => document.querySelector(s);
 const svg = $('#plan');
 
@@ -600,6 +580,7 @@ const getF = id => state.furniture.find(f => f.id === id);
 
 /* ======================= 几何工具 ======================= */
 const area = poly => Math.abs(poly.reduce((a,p,i) => { const q = poly[(i+1)%poly.length]; return a + p[0]*q[1] - q[0]*p[1]; }, 0)) / 2 / 1e6;
+const roomAreaText = (r,d=2) => `${r.estimated ? '≈ ' : ''}${area(r.poly).toFixed(d)}`;
 const perim = poly => poly.reduce((a,p,i) => { const q = poly[(i+1)%poly.length]; return a + Math.hypot(q[0]-p[0], q[1]-p[1]); }, 0) / 1000;
 const bbox = poly => { const xs = poly.map(p=>p[0]), ys = poly.map(p=>p[1]); return [Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)]; };
 function aabb(f){ const a = f.rot*Math.PI/180, c = Math.abs(Math.cos(a)), s = Math.abs(Math.sin(a)); return {hw:f.w/2*c + f.d/2*s, hh:f.w/2*s + f.d/2*c}; }
@@ -809,21 +790,22 @@ function renderLabels(){
   g.innerHTML = ROOMS.filter(r => r.at).map(r => {
     const [x,y] = r.at, small = ['utility','storage'].includes(r.id), halo = 'stroke="#fbf9f4" stroke-width="45" paint-order="stroke" stroke-linejoin="round"';
     return `<text x="${x}" y="${y}" font-size="${small?140:250}" font-weight="600" text-anchor="middle" fill="#2b2824" ${halo}>${esc(nm(state.rooms[r.id].name))}</text>
-      <text x="${x}" y="${y+(small?180:260)}" font-size="${small?120:175}" text-anchor="middle" fill="#7d7366" ${halo}>${fmt(area(r.poly))} m²</text>`;
+      <text x="${x}" y="${y+(small?180:260)}" font-size="${small?120:175}" text-anchor="middle" fill="#7d7366" ${halo}>${roomAreaText(r)} m²</text>`;
   }).join('');
 }
 
 function renderDims(){
   const DC = '#7d7160', LS = `stroke="${DC}" stroke-width="1" vector-effect="non-scaling-stroke"`;
   const g = $('#gDims');
-  g.innerHTML = DIMENSIONS.map(({h,at,start,end}) => {
+  g.innerHTML = DIMENSIONS.map(({h,at,start,end,source}) => {
+    const prefix = source === 'official' ? tr('图 ','P ') : source === 'estimated' ? '≈ ' : '';
     const mid = (start+end)/2, x = h ? mid : at-70, y = h ? at-70 : mid;
     const line = h ? `<line x1="${start}" y1="${at}" x2="${end}" y2="${at}" ${LS}/>`
       : `<line x1="${at}" y1="${start}" x2="${at}" y2="${end}" ${LS}/>`;
     const ticks = [start,end].map(p => h
       ? `<path d="M${p} ${at-130}V${at+130}M${p-65} ${at+65}L${p+65} ${at-65}" fill="none" ${LS}/>`
       : `<path d="M${at-130} ${p}H${at+130}M${at-65} ${p+65}L${at+65} ${p-65}" fill="none" ${LS}/>`).join('');
-    return line + ticks + `<text x="${x}" y="${y}" font-size="185" text-anchor="middle" fill="${DC}" ${h ? '' : `transform="rotate(-90 ${x} ${y})"`}>${end-start}</text>`;
+    return line + ticks + `<text x="${x}" y="${y}" font-size="185" text-anchor="middle" fill="${DC}" ${h ? '' : `transform="rotate(-90 ${x} ${y})"`}>${prefix}${end-start}</text>`;
   }).join('');
   g.setAttribute('display', ui.layers.dims ? 'inline' : 'none');
 }
@@ -883,7 +865,7 @@ function renderAll(){
 
 function updateHeader(){
   const tot = ROOMS.filter(r => r.counted !== false).reduce((a,r) => a + area(r.poly), 0);
-  $('#subtitle').textContent = tr(`套内使用面积约 ${fmt(tot)} m² · 尺寸单位 mm · 实测图适配`, `Net floor area ≈ ${fmt(tot)} m² · Units: mm · Measured floor plan`);
+  $('#subtitle').textContent = tr(`套内使用面积约 ${fmt(tot)} m² · 尺寸单位 mm · 厨卫未实测`, `Net floor area ≈ ${fmt(tot)} m² · Units: mm · Kitchen/baths unmeasured`);
   $('#undo').disabled = !undoStack.length; $('#redo').disabled = !redoStack.length;
   $('#undo').style.opacity = undoStack.length ? 1 : .4; $('#redo').style.opacity = redoStack.length ? 1 : .4;
 }
@@ -903,7 +885,7 @@ function overviewPanel(){
   const rows = ROOMS.map(r => {
     const st = state.rooms[r.id];
     return `<tr class="click" data-room="${r.id}"><td><span class="sw" style="background:${MATS[st.mat].sw}"></span>${esc(nm(st.name))}${r.counted===false?' <span class="muted">*</span>':''}</td>
-      <td class="r">${fmt(area(r.poly))} m²</td></tr>`;
+      <td class="r">${roomAreaText(r)} m²</td></tr>`;
   }).join('');
   const tot = ROOMS.filter(r => r.counted !== false).reduce((a,r) => a + area(r.poly), 0);
   const byMat = {};
@@ -916,8 +898,8 @@ function overviewPanel(){
   return `
   <section><h3>${tr('房间面积','Room Areas')} <small>${tr('点击查看 / 更换地面','Click to view / change flooring')}</small></h3>
     <table>${rows}</table>
-    <div class="total"><span>${tr('套内使用面积','Net floor area')}</span><b>${fmt(tot)} m²</b></div>
-    <div class="muted" style="font-size:11px;margin-top:4px">${tr('* 面积按重建净尺寸计算，推定值与差异见尺寸映射说明','* Calculated from reconstructed net dimensions; see dimension mapping for assumptions')}</div></section>
+    <div class="total"><span>${tr('套内使用面积','Net floor area')}</span><b>≈ ${fmt(tot)} m²</b></div>
+    <div class="muted" style="font-size:11px;margin-top:4px">${tr('* 无前缀：实测净尺寸；图：官方外框参考；≈：估算。厨卫未实测','* Plain dimensions: measured net; P: official envelope; ≈: estimated. Kitchen/baths are unmeasured.')}</div></section>
   <section><h3>${tr('地面材料估算','Flooring Estimate')} <small>${tr('含 5% 损耗','incl. 5% waste')}</small></h3>
     <table>${matRows}</table>
     <div class="total"><span>${tr('地面材料合计','Flooring total')}</span><b>¥${Math.round(cost).toLocaleString()}</b></div></section>
@@ -1015,11 +997,13 @@ function roomPanel(r){
   const mats = Object.entries(MATS).map(([k,m]) => `<button class="mat ${k===st.mat?'on':''}" data-mat="${k}"><i style="background:${m.sw}"></i><span>${nm(m.name)}<small>¥${m.price}/m²</small></span></button>`).join('');
   return `<section><h3>${tr('房间','Room')}</h3>
     <div class="form"><label class="full">${tr('名称','Name')}<input id="rName" value="${esc(nm(st.name))}"></label></div>
+    ${r.source === 'official' ? `<div class="muted" style="margin-top:8px">${tr(`官方外框参考：${r.officialSpan.join(' × ')} mm；室内净尺寸和面积尚未实测。`, `Official envelope reference: ${r.officialSpan.join(' × ')} mm; interior dimensions and area are unmeasured.`)}</div>` : ''}
+    ${r.measuredArea ? `<div class="muted" style="margin-top:8px">${tr(`实测图面积 ${r.measuredArea.toFixed(2)} m²；当前边界计算 ${a.toFixed(2)} m²，差 ${(a-r.measuredArea).toFixed(2)} m²。客餐厅与玄关、洗手区的面积分界待核对。`, `Measured-plan area: ${r.measuredArea.toFixed(2)} m²; current boundary: ${a.toFixed(2)} m², difference: ${(a-r.measuredArea).toFixed(2)} m². Foyer and vanity area boundaries need confirmation.`)}</div>` : ''}
     <div class="stats" style="margin-top:10px">
-      <div><small>${tr('使用面积','Floor area')}</small><span class="big">${fmt(a)}</span> m²</div>
+      <div><small>${tr('使用面积','Floor area')}</small><span class="big">${roomAreaText(r)}</span> m²</div>
       <div><small>${tr('周长','Perimeter')}</small><span class="big">${fmt(perim(r.poly),1)}</span> m</div>
-      <div><small>${tr('开间','Width')}</small><span class="big">${x1-x0}</span> mm</div>
-      <div><small>${tr('进深','Depth')}</small><span class="big">${y1-y0}</span> mm</div></div>
+      <div><small>${tr('边界宽度','Boundary width')}</small><span class="big">${r.estimated||r.extentEstimated?'≈ ':''}${x1-x0}</span> mm</div>
+      <div><small>${tr('边界进深','Boundary depth')}</small><span class="big">${r.estimated||r.extentEstimated?'≈ ':''}${y1-y0}</span> mm</div></div>
     <div class="muted">${tr(`墙面面积（层高 2.8m，未扣门窗）约 ${fmt(perim(r.poly)*2.8,1)} m²`, `Wall area (2.8m ceiling, openings not deducted) ≈ ${fmt(perim(r.poly)*2.8,1)} m²`)}</div></section>
   <section><h3>${tr('地面材料','Flooring')}</h3><div class="mats">${mats}</div>
     <div class="total"><span>${tr('材料估价','Estimated cost')}</span><b>¥${Math.round(a*MATS[st.mat].price*1.05).toLocaleString()}</b></div></section>
@@ -1253,7 +1237,7 @@ svg.addEventListener('pointermove', e => {
   $('#cx').textContent = Math.round(p.x) + ' mm'; $('#cy').textContent = Math.round(p.y) + ' mm';
   if (!drag){
     const room = e.target.closest && e.target.closest('[data-room]');
-    $('#hover').innerHTML = room ? `<b>${esc(state.rooms[room.dataset.room].name)}</b> ${fmt(area(ROOMS.find(r=>r.id===room.dataset.room).poly))} m²` : '';
+    $('#hover').innerHTML = room ? `<b>${esc(state.rooms[room.dataset.room].name)}</b> ${roomAreaText(ROOMS.find(r=>r.id===room.dataset.room))} m²` : '';
     if (ui.tool === 'measure' && ui.mA){ ui.mCur = snapPoint(p, e.shiftKey); renderMeasure(); }
     return;
   }
@@ -2375,12 +2359,12 @@ function buildLabels(){
   labelG.children.slice().forEach(o => { o.element.remove(); labelG.remove(o); });
   ROOMS.filter(r => r.at).forEach(r => {
     const el = document.createElement('div'); el.className = 'rlabel';
-    el.innerHTML = `${esc(nm(state.rooms[r.id].name))}<small>${area(r.poly).toFixed(2)}m²</small>`;
+    el.innerHTML = `${esc(nm(state.rooms[r.id].name))}<small>${roomAreaText(r)}m²</small>`;
     const o = new CSS2DObject(el); o.position.set(wx(r.at[0]), opt.cut + .15, wz(r.at[1])); o.visible = labelG.visible; labelG.add(o);
   });
   const counted = ROOMS.filter(r => r.counted !== false);
-  $('#roomList').innerHTML = counted.map(r => `<button data-room="${r.id}"><span>${esc(nm(state.rooms[r.id].name))}</span><small>${area(r.poly).toFixed(2)} m²</small></button>`).join('')
-    + `<button data-room="__all"><span>${tr('全屋', 'Whole home')}</span><small>${counted.reduce((a, r) => a + area(r.poly), 0).toFixed(2)} m²</small></button>`;
+  $('#roomList').innerHTML = counted.map(r => `<button data-room="${r.id}"><span>${esc(nm(state.rooms[r.id].name))}</span><small>${roomAreaText(r)} m²</small></button>`).join('')
+    + `<button data-room="__all"><span>${tr('全屋', 'Whole home')}</span><small>≈ ${counted.reduce((a, r) => a + area(r.poly), 0).toFixed(2)} m²</small></button>`;
   document.querySelectorAll('#roomList button').forEach(b => b.onclick = () => {
     document.querySelectorAll('#roomList button').forEach(x => x.classList.toggle('on', x === b));
     if (opt.mode === 'walk') setMode('orbit');
@@ -2594,7 +2578,7 @@ function setMode(m){
     if (opt.cut < H){ opt.cut = H; syncCutBtns(); sync(); }
     orbit.enabled = false; fly = null;
     camera.position.set(wx(PLAN.walk.position[0]), 1.6, wz(PLAN.walk.position[1]));
-    camera.lookAt(wx(PLAN.walk.target[0]), 1.5, wz(PLAN.walk.target[1]));   // 实测图右侧玄关内，朝向客餐厅
+    camera.lookAt(wx(PLAN.walk.target[0]), 1.5, wz(PLAN.walk.target[1]));   // 保留实测图朝向，从右侧玄关进入
     $('#walkOverlay').style.display = 'flex';
     syncHint3d();
   } else {

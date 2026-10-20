@@ -14,18 +14,23 @@ function data(){
 const area = p => Math.abs(p.reduce((a,r,i)=>{const q=p[(i+1)%p.length];return a+r[0]*q[1]-q[0]*r[1]},0))/2e6;
 const overlap = (a,b) => Math.min(a[2],b[2])>Math.max(a[0],b[0]) && Math.min(a[3],b[3])>Math.max(a[1],b[1]);
 function inside(p,poly){let on=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const a=poly[i],b=poly[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])on=!on;}return on;}
-test('measured exterior and net room dimensions close',()=>{
+test('official exterior and measured non-wet room dimensions close',()=>{
   const d=data(), r=Object.fromEntries(d.ROOMS.map(r=>[r.id,r]));
-  assert.equal(d.PLAN.width,10694);assert.equal(d.PLAN.depth,11243);
+  assert.equal(d.PLAN.width,10700);assert.equal(d.PLAN.depth,11550);
   for(const [id,width,depth] of [['elder',2870,2874],['study',2677,2874],['master',3365,4771]]){
     const p=r[id].poly;assert.equal(Math.max(...p.map(v=>v[0]))-Math.min(...p.map(v=>v[0])),width);assert.equal(Math.max(...p.map(v=>v[1]))-Math.min(...p.map(v=>v[1])),depth);
   }
   assert.equal(Math.round(area(r.elder.poly)*100)/100,8.25);
-  assert.equal(Math.round(area(r.kitchen.poly)*100)/100,5.81);
   assert.equal(Math.round(area(r.study.poly)*100)/100,7.69);
   assert.equal(Math.round(area(r.master.poly)*100)/100,16.05);
   assert.equal(Math.round(area(r.secondary.poly)*100)/100,13.16);
-  for(const value of [8687,10694,11243,2870,2045,2677,2874,3365,3765,2964,4771,3883,1412,1436,491,1793,958,885,1216])assert.ok(d.DIMENSIONS.some(x=>Math.abs(x.end-x.start)===value),`missing measured dimension ${value}`);
+  const lowEdge=r.secondary.poly.filter(p=>p[1]===11500);
+  assert.equal(Math.max(...lowEdge.map(p=>p[0]))-Math.min(...lowEdge.map(p=>p[0])),2964);
+  assert.ok(r.secondary.poly.some(p=>p[0]===10547&&p[1]===11500-3883));
+  const livingEdge=r.living.poly.filter(p=>p[1]===11500);
+  assert.equal(Math.max(...livingEdge.map(p=>p[0]))-Math.min(...livingEdge.map(p=>p[0])),3765);
+  for(const id of ['utility','storage'])assert.equal(Math.max(...r[id].poly.map(p=>p[1]))-Math.min(...r[id].poly.map(p=>p[1])),958);
+  for(const value of [9300,10700,11550,2870,2600,2677,2874,3365,3765,2964,4771,3883,3100,1750,1800,958])assert.ok(d.DIMENSIONS.some(x=>Math.abs(x.end-x.start)===value),`missing measured dimension ${value}`);
 });
 test('door/window apertures are clear, dimensionally valid and on the floor boundary',()=>{
   const d=data();
@@ -106,22 +111,59 @@ test('bathroom return wall encloses the vanity and sideboard stays outside the b
   const cabinet=ctx.items.find(f=>f.id==='bath-sideboard');
   assert.ok(cabinet,'red-marked dining sideboard must be present');
   assert.equal(cabinet.type,'cabinet');assert.equal(cabinet.name,'餐边柜');
-  assert.ok(cabinet.cx>3162&&cabinet.cx<3665&&cabinet.cy>4736&&cabinet.cy<6172);
-  assert.ok(d.WALLS.some(w=>w[0]===3515&&w[2]===3665&&w[1]<=3974&&w[3]===4586),'black-marked vanity east wall');
-  assert.ok(d.WALLS.some(w=>w[0]<=3162&&w[1]===4586&&w[2]===3665&&w[3]===4736),'black-marked return wall');
+  assert.ok(cabinet.cx>3100&&cabinet.cx<3668&&cabinet.cy>4925&&cabinet.cy<6650);
+  assert.ok(d.WALLS.some(w=>w[0]===3518&&w[2]===3668&&w[1]<=3900&&w[3]===4775),'black-marked vanity east wall');
+  assert.ok(d.WALLS.some(w=>w[0]<=3100&&w[1]===4775&&w[2]===3668&&w[3]===4925),'black-marked return wall');
 });
-test('existing layouts receive the missing sideboard once and retain user edits',()=>{
-  const d=data(),ctx={PLAN:d.PLAN,ROOMS:d.ROOMS,typeColor:()=> '#fff',localStorage:{getItem:()=>null}};
-  vm.runInNewContext(html.slice(html.indexOf('let _n = 1;'),html.indexOf('const PX_MM'))+';globalThis.fix=fixState;globalThis.fresh=defaultState;',ctx);
-  const legacy={planId:d.PLAN.id,furniture:[{id:'my-chair',type:'chair',name:'我的餐椅',cx:5200,cy:5200,w:450,d:480,rot:30}],rooms:{living:{name:'我家客厅',mat:'wood'}},demolished:['w20'],measures:[{a:{x:0,y:0},b:{x:1000,y:0}}]};
+test('a whole-plan rematch isolates old layouts without rewriting their data',()=>{
+  const d=data(),reads=[],writes=[],ctx={PLAN:d.PLAN,ROOMS:d.ROOMS,typeColor:()=> '#fff',localStorage:{getItem:k=>{reads.push(k);return null},setItem:(...a)=>writes.push(a)}};
+  vm.runInNewContext(html.slice(html.indexOf('let _n = 1;'),html.indexOf('const PX_MM'))+';globalThis.fix=fixState;globalThis.fresh=defaultState;globalThis.loadPlan=load;',ctx);
+  const legacy={planId:'measured-10694x11243-v1',layoutRevision:2,furniture:[{id:'my-chair',type:'chair',name:'我的餐椅',cx:5200,cy:5200,w:450,d:480,rot:30}],rooms:{living:{name:'我家客厅',mat:'wood'}},demolished:['w20'],measures:[]};
   const before=JSON.parse(JSON.stringify(legacy));
-  const migrated=ctx.fix(legacy);
-  assert.equal(migrated.layoutRevision,2);
-  assert.equal(migrated.furniture.filter(f=>f.id==='bath-sideboard').length,1);
-  assert.deepEqual(migrated.furniture[0],before.furniture[0]);
-  assert.deepEqual(migrated.rooms.living,before.rooms.living);
-  assert.deepEqual(migrated.demolished,before.demolished);assert.deepEqual(migrated.measures,before.measures);
-  assert.equal(ctx.fix(migrated).furniture.filter(f=>f.id==='bath-sideboard').length,1);
-  migrated.furniture=migrated.furniture.filter(f=>f.id!=='bath-sideboard');
-  assert.equal(ctx.fix(migrated).furniture.length,1,'do not re-add a sideboard deleted after the correction');
+  assert.throws(()=>ctx.fix(legacy),/户型|plan/i);
+  assert.deepEqual(legacy,before);
+  ctx.loadPlan();
+  assert.deepEqual(reads,['huxing-'+d.PLAN.id]);assert.equal(writes.length,0);
+  assert.equal(ctx.fresh().furniture.filter(f=>f.id==='bath-sideboard').length,1);
+});
+test('unmeasured kitchen and baths carry official references and approximate area labels',()=>{
+  const d=data(),r=Object.fromEntries(d.ROOMS.map(r=>[r.id,r]));
+  for(const [id,spans] of [['kitchen',[2600,3100]],['gbath',[1750]],['mbath',[1800]]]){
+    assert.equal(r[id].source,'official');assert.equal(r[id].estimated,true);assert.deepEqual(r[id].officialSpan,spans);
+  }
+  const ctx={};
+  vm.runInNewContext(html.slice(html.indexOf('const area ='),html.indexOf('const perim ='))+';globalThis.label=roomAreaText;',ctx);
+  assert.ok(ctx.label(r.kitchen).startsWith('≈ '));assert.ok(ctx.label(r.gbath).startsWith('≈ '));
+  assert.equal(ctx.label(r.master),'16.05');
+});
+test('official WC inset remains exterior void rather than bathroom floor',()=>{
+  const d=data(),bath=d.ROOMS.find(r=>r.id==='gbath');
+  assert.equal(Math.min(...bath.poly.map(p=>p[0])),953);
+  assert.ok(d.WALLS.some(w=>w[0]===800&&w[2]===953&&w[1]===3100));
+  for(const r of d.ROOMS)assert.equal(inside([400,4000],r.poly),false,'official inset must not become indoor floor');
+});
+test('dimension mapping identifies the active plan and unresolved living boundary',()=>{
+  const d=data(),docs=fs.readFileSync('docs/dimension-mapping.md','utf8');
+  assert.ok(docs.includes(d.PLAN.id));
+  assert.ok(docs.includes('huxing-'+d.PLAN.id));
+  assert.ok(docs.includes(`${d.PLAN.width} × ${d.PLAN.depth}`));
+  const living=d.ROOMS.find(r=>r.id==='living');
+  assert.equal(living.measuredArea,35.49);assert.equal(living.estimated,true);
+  assert.ok(docs.includes(area(living.poly).toFixed(2)));
+  assert.ok(docs.includes((area(living.poly)-living.measuredArea).toFixed(2)));
+  assert.equal(docs.includes('measured-10694x11243-v1'),false);
+});
+test('room properties distinguish estimated boundary extents from measured net spans',()=>{
+  const d=data(),ctx={area,perim:()=>0,fmt:v=>v,nm:v=>v,esc:v=>v,tr:z=>z,
+    roomAreaText:r=>`${r.estimated?'≈ ':''}${area(r.poly).toFixed(2)}`,
+    bbox:p=>[Math.min(...p.map(v=>v[0])),Math.min(...p.map(v=>v[1])),Math.max(...p.map(v=>v[0])),Math.max(...p.map(v=>v[1]))],
+    state:{rooms:Object.fromEntries(d.ROOMS.map(r=>[r.id,{name:r.name,mat:'tile'}])),furniture:[]},MATS:{tile:{name:'地砖',price:1,sw:'#fff'}}};
+  vm.runInNewContext(html.slice(html.indexOf('function roomPanel('),html.indexOf('function bindRoomPanel('))+';globalThis.render=roomPanel;',ctx);
+  const living=ctx.render(d.ROOMS.find(r=>r.id==='living'));
+  assert.match(living,/边界宽度<\/small><span class="big">≈ 6581/);
+  assert.match(living,/边界进深<\/small><span class="big">≈ 8400/);
+  assert.match(living,/实测图面积 35.49 m².*差 2.75 m²/);
+  const master=ctx.render(d.ROOMS.find(r=>r.id==='master'));
+  assert.match(master,/边界宽度<\/small><span class="big">3365/);
+  assert.match(master,/边界进深<\/small><span class="big">4771/);
 });
